@@ -10,3 +10,5 @@ Initial design considerations :
 - An LCD extension should be nice
 - A raspberryPi extension with network Time Protocol server suppers might be brilliant
 
+
+<H1> This is working branch. Don't forget to merge to master with pull requests</H1>
