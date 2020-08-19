@@ -418,4 +418,8 @@ Text Label 6775 1775 2    50   ~ 0
 1PPS
 Text Label 4300 2425 2    50   ~ 0
 1PPS
+Text Label 5300 3325 0    50   ~ 0
+SCL
+Text Label 5300 3225 0    50   ~ 0
+SDA
 $EndSCHEMATC

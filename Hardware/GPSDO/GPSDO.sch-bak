@@ -412,4 +412,10 @@ Text Notes 7325 1950 0    50   ~ 0
 GPS
 Text Notes 4750 5875 0    50   ~ 0
 POWER SUPPLY
+Wire Wire Line
+	6775 1775 7000 1775
+Text Label 6775 1775 2    50   ~ 0
+1PPS
+Text Label 4300 2425 2    50   ~ 0
+1PPS
 $EndSCHEMATC
