@@ -45,6 +45,7 @@ unsigned long XtalFreq = 100000000;
 unsigned long XtalFreq_old = 100000000;
 long stab;
 long correction = 0;
+float counter_error = 30;
 byte stab_count = 44;
 unsigned long mult = 0;
 //int second = 0, minute = 0, hour = 0;
@@ -91,17 +92,17 @@ void setup()
   si5351.set_freq(250000000ULL, SI5351_CLK1);
   si5351.update_status();
 
-  Serial.print("Waiting for GPS");
+  Serial.println("GPS sinyali bekleniyor...");
 
   GPSproces(6000);
 
   if (millis() > 5000 && gps.charsProcessed() < 10) {
-    Serial.print("No GPS connected");
+    Serial.println("GPS bulunamadi!!!");
     delay(5000);
     GPSstatus = false;
   }
   if (GPSstatus == true) {
-    Serial.print("Waiting for SAT");
+    Serial.println("GPS Fix bekleniyor.....");
     do {
       GPSproces(1000);
     } while (gps.satellites.value() == 0);
@@ -140,24 +141,11 @@ void loop()
     correct_si5351a();
     new_freq = 0;
   }
-  if (new_freq == 2) {
-    //update_si5351a();
-    new_freq = 0;
-  }
   
-//  delay(500);
-//  Serial.print(".");
-//  stab_on_lcd();
-
   if (millis() > pps_correct + 1200) {
     pps_valid = 0;
-    Serial.print("---PPC NOT CORRECT");
     Serial.print(pps_correct);
     pps_correct = millis();
-    Serial.print("*");
-    Serial.print(pps_correct);
-//    time_enable = false;
-
   }
 }
 //**************************************************************************************
@@ -199,7 +187,7 @@ void PPSinterrupt()
       
   char sz[32];
   sprintf(sz, "%d ", stab_count);
-  Serial.println(sz);
+  Serial.print(sz);
 
 }
 //*******************************************************************************
@@ -208,17 +196,15 @@ ISR(TIMER1_OVF_vect)
 {
   mult++;                                          //Increment multiplier
   //Serial.print(".");
+  //digitalWrite(LED1, (mult / 4 ) && 1 );
   TIFR1 = (1 << TOV1);                             //Clear overlow flag
 }
 //********************************************************************************
 //                                STAB on LCD  stabilnośc częstotliwości
 //********************************************************************************
 void stab_on_lcd() {
-  float stab_float;
-  long pomocna;
-//  time_enable = false;
-  stab = XtalFreq - 100000000;
-  stab = stab * 10 ;
+  stab = (XtalFreq - 100000000) * 10;
+
   if (stab > 100 || stab < -100) {
     correction = correction + stab;
   }
@@ -226,14 +212,9 @@ void stab_on_lcd() {
     correction = correction + stab / 2;
   }
   else correction = correction + stab / 4;
-  pomocna = (10000 / (2500000 / 1000000));
-  stab = stab * 100;
-  stab = stab / pomocna;
-  stab_float = float(stab);
-  stab_float = stab_float / 10;
-  Serial.print(stab_float);
+  
   char sz[32];
-  sprintf(sz, "STAB %d Hz\0", stab);
+  sprintf(sz, " STAB %d mHz\0", stab);
   Serial.println(sz);
 }
 
