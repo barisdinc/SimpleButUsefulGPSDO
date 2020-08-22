@@ -13,188 +13,244 @@
  */
  
 #include <TinyGPS++.h>
+#include <SoftwareSerial.h>
+#include <string.h>
+#include <ctype.h>
+#include <avr/interrupt.h>
+#include <avr/io.h>
 #include <Wire.h>
 #include <si5351.h>
+#include <EEPROMex.h>
 
-//TinyGPSPlus gps;
-Si5351 oscillator;
+// The TinyGPS++ object
+TinyGPSPlus gps;
 
-#define OnePPSinput              2
-#define LED1                     10
-#define LED2                     11  // 1 PPS 
-#define LED3                     12
+#define RXPIN 7
+#define TXPIN 6
+#define GPSBAUD 9600
+SoftwareSerial mySerial = SoftwareSerial (RXPIN, TXPIN);
 
-unsigned long XtalFreq = 100000000;      //100MHz   40 sec * 2.500.000 = 100.000.000
+
+Si5351 si5351;
+
+// Set up MCU pins
+#define ppsPin                   2
+#define LED1                    10
+#define LED2                    11
+#define LED3                    12
+
+
+// configure variables
+unsigned long XtalFreq = 100000000;
 unsigned long XtalFreq_old = 100000000;
-
 long stab;
-long correction_size = 0;
+long correction = 0;
 byte stab_count = 44;
-
-unsigned long correction_counter = 0;
-unsigned long Freq1 = 10000000;  //Channel1 Frequency
-unsigned long Freq2 = 27000000;  //Channel2 Frequency
-
-unsigned int tick_count = 0;
-unsigned int tick_count2 = 0;
-int GPSisValid = false;
+unsigned long mult = 0;
+//int second = 0, minute = 0, hour = 0;
+unsigned int tcount = 0;
+unsigned int tcount2 = 0;
+int validGPSflag = false;
+char c;
+boolean newdata = false;
 boolean GPSstatus = true;
+byte new_freq = 1;
+//unsigned long freq_step = 1000;
+//byte menu = 4;
+//boolean time_enable = true;
 unsigned long pps_correct;
 byte pps_valid = 1;
-
-/*
- * Environment setup
- */
+//*************************************************************************************
+//                                    SETUP
+//*************************************************************************************
 void setup()
 {
+  TCCR1B = 0;                                    //Disable Timer5 during setup
+  TCCR1A = 0;                                    //Reset
+  TCNT1  = 0;                                    //Reset counter to zero
+  TIFR1  = 1;                                    //Reset overflow
+  TIMSK1 = 1;                                    //Turn on overflow flag
+  pinMode(ppsPin, INPUT);                        // Inititalize GPS 1pps input
+  digitalWrite(ppsPin, HIGH);
+
   pinMode(LED1, OUTPUT);
   pinMode(LED2, OUTPUT);
   pinMode(LED3, OUTPUT);
-  pinMode(OnePPSinput, INPUT);                   //GPS 1pps input
-  //digitalWrite(OnePPSinput, HIGH);
+    
+  si5351.init(SI5351_CRYSTAL_LOAD_8PF, 0, 0);
+  si5351.drive_strength(SI5351_CLK1, SI5351_DRIVE_8MA);
 
-  TCCR1B = 0;                                    //TIMER5 DISABLED
-  TCCR1A = 0;                                    //RESET TIMER
-  TCNT1  = 0;                                    //RESET COUNTER
-  TIFR1  = 1;                                    //RESET OVERFLOW
-  TIMSK1 = 1;                                    //OVERFLOW FLAG
-
-  //Serial port for configuration and debug information
   Serial.begin(9600);
-  Serial.println("Simple GPS Disciplined Oscillator");
+  mySerial.begin(GPSBAUD);
 
+  // Set CLK0 to output 2,5MHz
+  si5351.set_ms_source(SI5351_CLK0, SI5351_PLLA);
+  si5351.set_freq(250000000ULL, SI5351_CLK0);
+  si5351.set_ms_source(SI5351_CLK1, SI5351_PLLB);
+//  si5351.set_freq(Freq * SI5351_FREQ_MULT, SI5351_CLK1);
+  si5351.set_freq(250000000ULL, SI5351_CLK1);
+  si5351.update_status();
 
-  //Initialize the si5351 Oscillators
-  oscillator.init(SI5351_CRYSTAL_LOAD_8PF, 0, 0);
-  oscillator.drive_strength(SI5351_CLK1, SI5351_DRIVE_8MA);
-  oscillator.drive_strength(SI5351_CLK2, SI5351_DRIVE_8MA);
+  Serial.print("Waiting for GPS");
 
-  // CLK0 output 2,5MHz - atmega328 can capture
-  oscillator.set_ms_source(SI5351_CLK0, SI5351_PLLA);
-  oscillator.set_freq(250000000ULL, SI5351_CLK0);      //Set sampling output to 2.5 MHz
-  oscillator.set_ms_source(SI5351_CLK1, SI5351_PLLB);
-  oscillator.set_freq(Freq1 * SI5351_FREQ_MULT, SI5351_CLK1);
-  //oscillator.set_freq(Freq2 * SI5351_FREQ_MULT, SI5351_CLK2);
-  oscillator.update_status();
-
-/*
   GPSproces(6000);
 
   if (millis() > 5000 && gps.charsProcessed() < 10) {
-    Serial.println("No GPS connected");
+    Serial.print("No GPS connected");
     delay(5000);
     GPSstatus = false;
   }
   if (GPSstatus == true) {
-    Serial.println("Waiting for SAT");
+    Serial.print("Waiting for SAT");
     do {
       GPSproces(1000);
     } while (gps.satellites.value() == 0);
-*/
-    attachInterrupt(0, OnePPSintVect, RISING);
+
+//    hour = gps.time.hour();
+//    minute = gps.time.minute();
+//    second = gps.time.second();
+    attachInterrupt(0, PPSinterrupt, RISING);
     TCCR1B = 0;
-    tick_count = 0;
-    correction_counter = 0;
-    GPSisValid = 1;
-//  }
+    tcount = 0;
+    mult = 0;
+    validGPSflag = 1;
+  }
 }
-
-
+//***************************************************************************************
+//                                         LOOP
+//***************************************************************************************
 void loop()
 {
-  if (tick_count2 != tick_count) {
-    tick_count2 = tick_count;
+  if (tcount2 != tcount) {
+    tcount2 = tcount;
     pps_correct = millis();
   }
-  if (tick_count < 4 ) {
-    //GPSproces(0);
+  if (tcount < 4 ) {
+    GPSproces(0);
   }
+//  if (gps.time.isUpdated()) {
+//    hour = gps.time.hour();
+//    minute = gps.time.minute();
+//    second = gps.time.second();
+//  }
+//  if (gps.satellites.isUpdated() && menu == 0) {
+//  }
+
+  if (new_freq == 1) {
+    correct_si5351a();
+    new_freq = 0;
+  }
+  if (new_freq == 2) {
+    //update_si5351a();
+    new_freq = 0;
+  }
+  
+//  delay(500);
+//  Serial.print(".");
+//  stab_on_lcd();
 
   if (millis() > pps_correct + 1200) {
     pps_valid = 0;
+    Serial.print("---PPC NOT CORRECT");
+    Serial.print(pps_correct);
     pps_correct = millis();
+    Serial.print("*");
+    Serial.print(pps_correct);
+//    time_enable = false;
 
   }
 }
-
-
-
-/*
- * One PPS interrupt
- */
-void OnePPSintVect()
+//**************************************************************************************
+//                       INTERRUPT  1PPS
+//**************************************************************************************
+//******************************************************************
+void PPSinterrupt()
 {
-  //Serial.println(correction_counter);
-  tick_count++;
+  tcount++;
   stab_count--;
-  if (tick_count == 4)                               // Start counting the 2.5 MHz signal from Si5351A CLK0
+  if (tcount == 4)                               // Start counting the 2.5 MHz signal from Si5351A CLK0
   {
-    Serial.println("TC 4");
     TCCR1B = 7;                                  //Clock on rising edge of pin 5
+    Serial.println("Timer enabled");
+    // loop();
   }
-  if (tick_count == 44)                              //The 40 second gate time elapsed - stop counting
+  if (tcount == 44)                              //The 40 second gate time elapsed - stop counting
   {
-    Serial.println("TC 44");
     TCCR1B = 0;                                  //Turn off counter
     if (pps_valid == 1) {
       XtalFreq_old = XtalFreq;
-      XtalFreq = correction_counter * 0x10000 + TCNT1;           //Calculate correction factor
+  
+      XtalFreq = mult * 0x10000 + TCNT1;           // 65536 (timer max sayim) * mult (kac sayim) + TCNT1 (timer da kalan artiklar) 
+      new_freq = 1;
+
+      char sz[32];
+      sprintf(sz, "! %ld  -\0", XtalFreq);
+      Serial.print(sz);
     }
-    TCNT1 = 0;                                       //Reset count to zero
-    correction_counter = 0;
-    tick_count = 0;                                  //Reset the seconds counter
+    TCNT1 = 0;                                   //Reset count to zero
+    mult = 0;
+    tcount = 0;                                  //Reset the seconds counter
     pps_valid = 1;
     //Serial.begin(9600);
     stab_count = 44;
+    stab_on_lcd();
   }
-}
 
+      
+  char sz[32];
+  sprintf(sz, "%d ", stab_count);
+  Serial.println(sz);
+
+}
 //*******************************************************************************
-// TIMER1 Overflow Interrupt
+// Timer 1 overflow intrrupt vector.
 ISR(TIMER1_OVF_vect)
 {
-  //digitalWrite(LED3,!digitalRead(LED3));
-  //digitalWrite(LED2,HIGH);
-  //digitalWrite(LED3,HIGH);
-  //Serial.print("X");
-  correction_counter++;                                          
-  TIFR1 = (1 << TOV1);                             //OVERFLOW FLAG CLEAR
+  mult++;                                          //Increment multiplier
+  //Serial.print(".");
+  TIFR1 = (1 << TOV1);                             //Clear overlow flag
 }
-
 //********************************************************************************
 //                                STAB on LCD  stabilnośc częstotliwości
 //********************************************************************************
 void stab_on_lcd() {
   float stab_float;
   long pomocna;
-
+//  time_enable = false;
   stab = XtalFreq - 100000000;
   stab = stab * 10 ;
   if (stab > 100 || stab < -100) {
-    correction_size = correction_size + stab;
+    correction = correction + stab;
   }
   else if (stab > 20 || stab < -20) {
-    correction_size = correction_size + stab / 2;
+    correction = correction + stab / 2;
   }
-  else correction_size = correction_size + stab / 4;
-  pomocna = (10000 / (Freq1 / 1000000));
+  else correction = correction + stab / 4;
+  pomocna = (10000 / (2500000 / 1000000));
   stab = stab * 100;
   stab = stab / pomocna;
   stab_float = float(stab);
   stab_float = stab_float / 10;
+  Serial.print(stab_float);
+  char sz[32];
+  sprintf(sz, "STAB %d Hz\0", stab);
+  Serial.println(sz);
 }
 
-void correct_oscillator()
+void correct_si5351a()
 {
-  oscillator.set_correction(correction_size, SI5351_PLL_INPUT_XO);
+  si5351.set_correction(correction, SI5351_PLL_INPUT_XO);
+  si5351.set_freq(250000000ULL, SI5351_CLK0);
+  si5351.set_freq(250000000ULL, SI5351_CLK1);
+
 }
 
 static void GPSproces(unsigned long ms)
 {
   unsigned long start = millis();
-//  do
-//  {
-//    while (Serial.available())
-//      gps.encode(Serial.read());
-//  } while (millis() - start < ms);
+  do
+  {
+    while (mySerial.available())
+      gps.encode(mySerial.read());
+  } while (millis() - start < ms);
 }
