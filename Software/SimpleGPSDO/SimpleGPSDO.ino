@@ -20,16 +20,15 @@
 #include <avr/io.h>
 #include <Wire.h>
 #include <si5351.h>
-#include <EEPROMex.h>
+//#include <EEPROMex.h>
 
 // The TinyGPS++ object
 TinyGPSPlus gps;
 
-#define RXPIN 7
-#define TXPIN 6
+#define RXPIN 6
+#define TXPIN 7
 #define GPSBAUD 9600
 SoftwareSerial mySerial = SoftwareSerial (RXPIN, TXPIN);
-
 
 Si5351 si5351;
 
@@ -38,6 +37,7 @@ Si5351 si5351;
 #define LED1                    10
 #define LED2                    11
 #define LED3                    12
+#define LED4                    13
 
 
 // configure variables
@@ -77,24 +77,34 @@ void setup()
   pinMode(LED1, OUTPUT);
   pinMode(LED2, OUTPUT);
   pinMode(LED3, OUTPUT);
-    
+  pinMode(LED4, OUTPUT);
+
   si5351.init(SI5351_CRYSTAL_LOAD_8PF, 0, 0);
-  si5351.drive_strength(SI5351_CLK1, SI5351_DRIVE_8MA);
+  si5351.drive_strength(SI5351_CLK0, SI5351_DRIVE_4MA);
+//  //si5351.drive_strength(SI5351_CLK1, SI5351_DRIVE_6MA);
+  si5351.drive_strength(SI5351_CLK2, SI5351_DRIVE_2MA);
 
   Serial.begin(9600);
   mySerial.begin(GPSBAUD);
+digitalWrite(LED1,HIGH);
+digitalWrite(LED2,HIGH);
+digitalWrite(LED3,HIGH);
+
+  Serial.println("GPS Discipllined Oscillator v1.0 (2020)");
+  Serial.println("---------------------------------------");
 
   // Set CLK0 to output 2,5MHz
   si5351.set_ms_source(SI5351_CLK0, SI5351_PLLA);
   si5351.set_freq(250000000ULL, SI5351_CLK0);
-  si5351.set_ms_source(SI5351_CLK1, SI5351_PLLB);
-//  si5351.set_freq(Freq * SI5351_FREQ_MULT, SI5351_CLK1);
-  si5351.set_freq(250000000ULL, SI5351_CLK1);
+  //si5351.set_ms_source(SI5351_CLK2, SI5351_PLLB);
+  ////si5351.set_freq(1000000000ULL, SI5351_CLK1);
+  si5351.set_freq(1000000000ULL, SI5351_CLK2);
   si5351.update_status();
 
-  Serial.println("GPS sinyali bekleniyor...");
+  Serial.print("GPS sinyali bekleniyor...");
 
   GPSproces(6000);
+  Serial.println("[OK]");
 
   if (millis() > 5000 && gps.charsProcessed() < 10) {
     Serial.println("GPS bulunamadi!!!");
@@ -102,14 +112,12 @@ void setup()
     GPSstatus = false;
   }
   if (GPSstatus == true) {
-    Serial.println("GPS Fix bekleniyor.....");
+    Serial.print("GPS Fix bekleniyor.....");
     do {
       GPSproces(1000);
     } while (gps.satellites.value() == 0);
+    Serial.println("[OK]");
 
-//    hour = gps.time.hour();
-//    minute = gps.time.minute();
-//    second = gps.time.second();
     attachInterrupt(0, PPSinterrupt, RISING);
     TCCR1B = 0;
     tcount = 0;
@@ -117,9 +125,7 @@ void setup()
     validGPSflag = 1;
   }
 }
-//***************************************************************************************
-//                                         LOOP
-//***************************************************************************************
+
 void loop()
 {
   if (tcount2 != tcount) {
@@ -129,29 +135,17 @@ void loop()
   if (tcount < 4 ) {
     GPSproces(0);
   }
-//  if (gps.time.isUpdated()) {
-//    hour = gps.time.hour();
-//    minute = gps.time.minute();
-//    second = gps.time.second();
-//  }
-//  if (gps.satellites.isUpdated() && menu == 0) {
-//  }
-
   if (new_freq == 1) {
-    correct_si5351a();
+    correct_si5351();
     new_freq = 0;
   }
   
   if (millis() > pps_correct + 1200) {
     pps_valid = 0;
-    Serial.print(pps_correct);
     pps_correct = millis();
   }
 }
-//**************************************************************************************
-//                       INTERRUPT  1PPS
-//**************************************************************************************
-//******************************************************************
+
 void PPSinterrupt()
 {
   tcount++;
@@ -159,8 +153,7 @@ void PPSinterrupt()
   if (tcount == 4)                               // Start counting the 2.5 MHz signal from Si5351A CLK0
   {
     TCCR1B = 7;                                  //Clock on rising edge of pin 5
-    Serial.println("Timer enabled");
-    // loop();
+    Serial.println(" [INT] ");
   }
   if (tcount == 44)                              //The 40 second gate time elapsed - stop counting
   {
@@ -171,38 +164,30 @@ void PPSinterrupt()
       XtalFreq = mult * 0x10000 + TCNT1;           // 65536 (timer max sayim) * mult (kac sayim) + TCNT1 (timer da kalan artiklar) 
       new_freq = 1;
 
-      char sz[32];
-      sprintf(sz, "! %ld  -\0", XtalFreq);
-      Serial.print(sz);
     }
     TCNT1 = 0;                                   //Reset count to zero
     mult = 0;
     tcount = 0;                                  //Reset the seconds counter
     pps_valid = 1;
-    //Serial.begin(9600);
     stab_count = 44;
-    stab_on_lcd();
+    calculate_correction();
   }
-
       
   char sz[32];
   sprintf(sz, "%d ", stab_count);
   Serial.print(sz);
-
 }
-//*******************************************************************************
-// Timer 1 overflow intrrupt vector.
+
 ISR(TIMER1_OVF_vect)
 {
   mult++;                                          //Increment multiplier
   //Serial.print(".");
-  //digitalWrite(LED1, (mult / 4 ) && 1 );
+  digitalWrite(LED4,mult && 2);
   TIFR1 = (1 << TOV1);                             //Clear overlow flag
 }
-//********************************************************************************
-//                                STAB on LCD  stabilnośc częstotliwości
-//********************************************************************************
-void stab_on_lcd() {
+
+
+void calculate_correction() {
   stab = (XtalFreq - 100000000) * 10;
 
   if (stab > 100 || stab < -100) {
@@ -214,15 +199,15 @@ void stab_on_lcd() {
   else correction = correction + stab / 4;
   
   char sz[32];
-  sprintf(sz, " STAB %d mHz\0", stab);
+  sprintf(sz, " DUZELTME : %d mHz\0", stab);
   Serial.println(sz);
 }
 
-void correct_si5351a()
+void correct_si5351()
 {
   si5351.set_correction(correction, SI5351_PLL_INPUT_XO);
   si5351.set_freq(250000000ULL, SI5351_CLK0);
-  si5351.set_freq(250000000ULL, SI5351_CLK1);
+  si5351.set_freq(1000000000ULL, SI5351_CLK2);
 
 }
 
@@ -232,6 +217,10 @@ static void GPSproces(unsigned long ms)
   do
   {
     while (mySerial.available())
+      //char c = mySerial.read();
+      //Serial.print(c);
+      //gps.encode(c);
       gps.encode(mySerial.read());
+      
   } while (millis() - start < ms);
 }
