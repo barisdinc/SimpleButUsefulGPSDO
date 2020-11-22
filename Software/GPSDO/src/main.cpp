@@ -1,6 +1,7 @@
+#include <Arduino.h>
 
 /*
- * Simple GPS Disciplint Oscilaltor
+ * Simple GPS Disciplined Oscilaltor
  * Author  : Baris DINC
  *   Date  : August 2020
  * License : GPL Gnu Public License  
@@ -61,6 +62,14 @@ byte new_freq = 1;
 //boolean time_enable = true;
 unsigned long pps_correct;
 byte pps_valid = 1;
+
+static void GPSproces(unsigned long ms);
+void correct_si5351();
+void calculate_correction();
+void PPSinterrupt();
+
+
+
 //*************************************************************************************
 //                                    SETUP
 //*************************************************************************************
@@ -199,7 +208,7 @@ void calculate_correction() {
   else correction = correction + stab / 4;
   
   char sz[32];
-  sprintf(sz, " DUZELTME : %d mHz\0", stab);
+  sprintf(sz, " DUZELTME : %ld mHz", stab);
   Serial.println(sz);
 }
 
