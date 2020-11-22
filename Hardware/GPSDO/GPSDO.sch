@@ -16,12 +16,12 @@ $EndDescr
 $Comp
 L MCU_Module:Arduino_Nano_v3.x A1
 U 1 1 5F3ABEAD
-P 4800 2825
-F 0 "A1" H 4810 2686 50  0000 C CNN
-F 1 "Nano" H 4806 2803 50  0000 C CNN
-F 2 "Module:Arduino_Nano" H 4950 1875 50  0001 L CNN
-F 3 "http://www.mouser.com/pdfdocs/Gravitech_Arduino_Nano3_0.pdf" H 4800 1825 50  0001 C CNN
-	1    4800 2825
+P 4325 2500
+F 0 "A1" H 4335 2361 50  0000 C CNN
+F 1 "Nano" H 4331 2478 50  0000 C CNN
+F 2 "Module:Arduino_Nano" H 4475 1550 50  0001 L CNN
+F 3 "http://www.mouser.com/pdfdocs/Gravitech_Arduino_Nano3_0.pdf" H 4325 1500 50  0001 C CNN
+	1    4325 2500
 	1    0    0    -1  
 $EndComp
 $Comp
@@ -92,7 +92,7 @@ F 3 "~" H 6175 3375 50  0001 C CNN
 $EndComp
 Text Label 7250 2600 0    50   ~ 0
 2M5
-Text Label 4300 2725 2    50   ~ 0
+Text Label 3825 2400 2    50   ~ 0
 2M5
 Wire Wire Line
 	7175 2600 7250 2600
@@ -151,36 +151,36 @@ Wire Wire Line
 	6525 1500 6375 1500
 Wire Wire Line
 	6375 1500 6375 1550
-Text Label 4300 2825 2    50   ~ 0
+Text Label 3825 2500 2    50   ~ 0
 GPS_RX
-Text Label 4300 2925 2    50   ~ 0
+Text Label 3825 2600 2    50   ~ 0
 GPS_TX
-Text Label 4700 1825 1    50   ~ 0
+Text Label 4225 1500 1    50   ~ 0
 VCC
-NoConn ~ 4900 1825
-NoConn ~ 5000 1825
+NoConn ~ 4425 1500
+NoConn ~ 4525 1500
 $Comp
 L power:GND #PWR01
 U 1 1 5F3E5929
-P 4850 3875
-F 0 "#PWR01" H 4850 3625 50  0001 C CNN
-F 1 "GND" H 5000 3800 50  0000 C CNN
-F 2 "" H 4850 3875 50  0001 C CNN
-F 3 "" H 4850 3875 50  0001 C CNN
-	1    4850 3875
+P 4375 3550
+F 0 "#PWR01" H 4375 3300 50  0001 C CNN
+F 1 "GND" H 4525 3475 50  0000 C CNN
+F 2 "" H 4375 3550 50  0001 C CNN
+F 3 "" H 4375 3550 50  0001 C CNN
+	1    4375 3550
 	1    0    0    -1  
 $EndComp
 Wire Wire Line
-	4800 3825 4800 3850
+	4325 3500 4325 3525
 Wire Wire Line
-	4800 3850 4850 3850
+	4325 3525 4375 3525
 Wire Wire Line
-	4900 3850 4900 3825
+	4425 3525 4425 3500
 Wire Wire Line
-	4850 3875 4850 3850
-Connection ~ 4850 3850
+	4375 3550 4375 3525
+Connection ~ 4375 3525
 Wire Wire Line
-	4850 3850 4900 3850
+	4375 3525 4425 3525
 Text Label 6475 3000 2    50   ~ 0
 SDA
 Text Label 6475 3100 2    50   ~ 0
@@ -292,11 +292,11 @@ Wire Wire Line
 	6525 1200 6375 1200
 Wire Wire Line
 	6375 1200 6375 1125
-Text Label 4300 3325 2    50   ~ 0
+Text Label 3825 3000 2    50   ~ 0
 LED1
-Text Label 4300 3425 2    50   ~ 0
+Text Label 3825 3100 2    50   ~ 0
 LED2
-Text Label 4300 3525 2    50   ~ 0
+Text Label 3825 3200 2    50   ~ 0
 LED3
 Text Notes 8125 2750 0    50   ~ 0
 1-160MHz
@@ -326,19 +326,11 @@ Wire Notes Line
 	5925 1850 5925 900 
 Wire Notes Line
 	5925 900  7475 900 
-Wire Notes Line
-	7375 3950 5925 3950
-Wire Notes Line
-	7375 5350 7375 3950
-Wire Notes Line
-	5925 5350 7375 5350
-Wire Notes Line
-	5925 3950 5925 5350
-Text Label 6400 4850 2    50   ~ 0
+Text Label 6100 4850 2    50   ~ 0
 LED3
-Text Label 6400 4475 2    50   ~ 0
+Text Label 6100 4475 2    50   ~ 0
 LED2
-Text Label 6400 4150 2    50   ~ 0
+Text Label 6100 4150 2    50   ~ 0
 LED1
 Wire Wire Line
 	6525 4850 6400 4850
@@ -416,10 +408,51 @@ Wire Wire Line
 	6775 1775 7000 1775
 Text Label 6775 1775 2    50   ~ 0
 1PPS
-Text Label 4300 2425 2    50   ~ 0
+Text Label 3825 2100 2    50   ~ 0
 1PPS
-Text Label 5300 3325 0    50   ~ 0
+Text Label 4825 3000 0    50   ~ 0
 SCL
-Text Label 5300 3225 0    50   ~ 0
+Text Label 4825 2900 0    50   ~ 0
 SDA
+$Comp
+L Device:R R1
+U 1 1 5F3EDFEB
+P 6250 4150
+F 0 "R1" V 6043 4150 50  0000 C CNN
+F 1 "R" V 6134 4150 50  0000 C CNN
+F 2 "" V 6180 4150 50  0001 C CNN
+F 3 "~" H 6250 4150 50  0001 C CNN
+	1    6250 4150
+	0    1    1    0   
+$EndComp
+$Comp
+L Device:R R2
+U 1 1 5F3F27E7
+P 6250 4475
+F 0 "R2" V 6043 4475 50  0000 C CNN
+F 1 "R" V 6134 4475 50  0000 C CNN
+F 2 "" V 6180 4475 50  0001 C CNN
+F 3 "~" H 6250 4475 50  0001 C CNN
+	1    6250 4475
+	0    1    1    0   
+$EndComp
+$Comp
+L Device:R R3
+U 1 1 5F3F3230
+P 6250 4850
+F 0 "R3" V 6043 4850 50  0000 C CNN
+F 1 "R" V 6134 4850 50  0000 C CNN
+F 2 "" V 6180 4850 50  0001 C CNN
+F 3 "~" H 6250 4850 50  0001 C CNN
+	1    6250 4850
+	0    1    1    0   
+$EndComp
+Wire Notes Line
+	5775 3875 7450 3875
+Wire Notes Line
+	7450 3875 7450 5625
+Wire Notes Line
+	7450 5625 5775 5625
+Wire Notes Line
+	5775 5625 5775 3875
 $EndSCHEMATC
