@@ -41,8 +41,8 @@ Si5351 si5351;
 
 
 // configure variables
-unsigned long XtalFreq = 400000000;
-unsigned long XtalFreq_old = 400000000;
+unsigned long XtalFreq = 4000000000;
+unsigned long XtalFreq_old = 4000000000;
 long stab;
 long correction = 0;
 float counter_error = 30;
@@ -188,7 +188,7 @@ ISR(TIMER1_OVF_vect)
 
 
 void calculate_correction() {
-  stab = (XtalFreq - 400000000) * 10;
+  stab = (XtalFreq - 4000000000) * 10;
 
   if (stab > 100 || stab < -100) {
     correction = correction + stab;
