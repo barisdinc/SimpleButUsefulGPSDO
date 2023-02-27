@@ -1,4 +1,3 @@
-
 /*
  * Simple GPS Disciplint Oscilaltor
  * Author  : Baris DINC
@@ -25,8 +24,8 @@
 // The TinyGPS++ object
 TinyGPSPlus gps;
 
-#define RXPIN 6
-#define TXPIN 7
+#define RXPIN 7
+#define TXPIN 6
 #define GPSBAUD 9600
 SoftwareSerial mySerial = SoftwareSerial (RXPIN, TXPIN);
 
@@ -41,8 +40,8 @@ Si5351 si5351;
 
 
 // configure variables
-unsigned long XtalFreq = 4000000000;
-unsigned long XtalFreq_old = 4000000000;
+unsigned long XtalFreq = 100000000; //Sabit DOKUNMA!!!
+unsigned long XtalFreq_old = 100000000; //Sabit DOKUNMA!!!
 long stab;
 long correction = 0;
 float counter_error = 30;
@@ -81,8 +80,8 @@ void setup()
 
   si5351.init(SI5351_CRYSTAL_LOAD_8PF, 0, 0);
   si5351.drive_strength(SI5351_CLK0, SI5351_DRIVE_4MA);
-//  //si5351.drive_strength(SI5351_CLK1, SI5351_DRIVE_6MA);
-  si5351.drive_strength(SI5351_CLK2, SI5351_DRIVE_2MA);
+  si5351.drive_strength(SI5351_CLK1, SI5351_DRIVE_2MA);
+  si5351.drive_strength(SI5351_CLK2, SI5351_DRIVE_8MA);
 
   Serial.begin(9600);
   mySerial.begin(GPSBAUD);
@@ -97,8 +96,8 @@ digitalWrite(LED3,HIGH);
   si5351.set_ms_source(SI5351_CLK0, SI5351_PLLA);
   si5351.set_freq(250000000ULL, SI5351_CLK0);
   //si5351.set_ms_source(SI5351_CLK2, SI5351_PLLB);
-  ////si5351.set_freq(4000000000ULL, SI5351_CLK1);
-  si5351.set_freq(4000000000ULL, SI5351_CLK2);
+  si5351.set_freq(1000000000ULL, SI5351_CLK1); //Frekansı istediğin ayarlamak için değiştirebilirsin 
+  si5351.set_freq(4000000000ULL, SI5351_CLK2); //Frekansı istediğin ayarlamak için değiştirebilirsin 
   si5351.update_status();
 
   Serial.print("GPS sinyali bekleniyor...");
@@ -188,7 +187,7 @@ ISR(TIMER1_OVF_vect)
 
 
 void calculate_correction() {
-  stab = (XtalFreq - 4000000000) * 10;
+  stab = (XtalFreq - 100000000) * 10; //Sabit DOKUNMA!!!
 
   if (stab > 100 || stab < -100) {
     correction = correction + stab;
@@ -200,14 +199,16 @@ void calculate_correction() {
   
   char sz[32];
   sprintf(sz, " DUZELTME : %d mHz\0", stab);
-  Serial.println(sz);
+  Serial.print(sz);
+  Serial.println(XtalFreq);
 }
 
 void correct_si5351()
 {
   si5351.set_correction(correction, SI5351_PLL_INPUT_XO);
   si5351.set_freq(250000000ULL, SI5351_CLK0);
-  si5351.set_freq(4000000000ULL, SI5351_CLK2);
+  si5351.set_freq(1000000000ULL, SI5351_CLK1);//Frekansı istediğin ayarlamak için değiştirebilirsin 
+  si5351.set_freq(4000000000ULL, SI5351_CLK2);//Frekansı istediğin ayarlamak için değiştirebilirsin 
 
 }
 
